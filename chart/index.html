@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Dashboard</title>
+</head>
+
+<body>
+
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+        }
+
+        h1 {
+            margin-bottom: 40px;
+            text-align: center;
+            color: #333;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .widget {
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px 1px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+
+    <h1>Executive Dashboard</h1>
+
+    <div class="dashboard-grid">
+        <div class="widget">
+            <canvas id="BarChart"></canvas>
+        </div>
+
+        <div class="widget">
+            <canvas id="Doughnut"></canvas>
+        </div>
+
+        <div class="widget">
+            <canvas id="LineChart"></canvas>
+        </div>
+    </div>
+
+    <script src="chart.js"></script>
+    <script>
+        const ctxBar = document.getElementById("BarChart").getContext('2d');
+        const ctxPie = document.getElementById("Doughnut").getContext('2d');
+        const ctxLine = document.getElementById("LineChart").getContext('2d');
+
+        const barChart = new Chart(ctxBar, {
+            type: "bar",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Monthly Revenue",
+                        data: []
+                    }
+                ]
+            },
+            options: {
+                responsive: true
+            }
+        });
+
+        const pieChart = new Chart(ctxPie, {
+            type: "doughnut",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Monthly Revenue",
+                        data: [],
+                        backgroundColor: [
+                            'rgb(255, 99, 132)',
+                            'rgb(54, 33, 122)',
+                            'rgb(54, 162, 235)',
+                            'rgb(255, 205, 86)'
+                        ]
+                    }
+                ]
+            },
+            options: {
+                responsive: true
+            }
+        });
+
+        const LineChart = new Chart(ctxLine, {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: "Monthly Revenue",
+                        data: [],
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+            }
+        });
+
+        async function loadData() {
+            try {
+                const response = await fetch("data.csv");
+                const csvText = await response.text();
+
+                const rows = csvText.trim().split("\n");
+                const dataRows = rows.slice(1);
+
+                dataRows.forEach(row => {
+                    const cols = row.split(",");
+                    const month = cols[0];
+                    const revenue = parseInt(cols[1]);
+
+                    if (month && revenue) {
+                        barChart.data.labels.push(month);
+                        barChart.data.datasets[0].data.push(revenue);
+
+                        pieChart.data.labels.push(month);
+                        pieChart.data.datasets[0].data.push(revenue);
+
+                        LineChart.data.labels.push(month);
+                        LineChart.data.datasets[0].data.push(revenue);
+                    }
+                });
+
+                barChart.update();
+                pieChart.update();
+                LineChart.update();
+
+            } catch (error) {
+                console.error("Error loading CSV:", error);
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+
+</html>
