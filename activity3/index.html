@@ -1,1 +1,124 @@
+<!doctype html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Dashboard - Activity 3</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+</head>
+
+<body>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .widget {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            margin: auto;
+            max-width: 1200px;
+            margin-bottom: 40px;
+        }
+    </style>
+    <h1>Activity 3</h1>
+
+    <div class="controls">
+        <label>Upload:</label> <input type="file" id="csvFile" accept=".csv" onchange="loadAndProcess()">
+
+        <label for="">Start: </label>
+        <input type="date" id="startDate" value="2026-01-01" onchange="updateChart()" />
+        <label for="">End: </label>
+        <input type="date" id="endDate" value="2026-01-31" onchange="updateChart()" />
+
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="widget">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+
+    <script src="chart.js"></script>
+    <script>
+        let fullData = []
+        let myChart
+        const ctx = document.getElementById("myChart").getContext("2d")
+
+        function loadAndProcess() {
+            const file = document.getElementById('csvFile').files[0];
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                complete: function (results) {
+                    fullData = results.data;
+                    updateChart();
+                }
+            });
+        }
+
+        function updateChart() {
+            if (fullData.length === 0) return;
+            const start = document.getElementById('startDate').value;
+            const end = document.getElementById('endDate').value;
+
+            // Analytics Layer: Filter data based on date range
+            let filtered = fullData.filter(d => {
+                const date = d[Object.keys(d)[0]];
+                if (start && end) return date >= start && date <= end;
+                return true;
+            });
+            const ctx = document.getElementById('myChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            const keys = Object.keys(fullData[0]);
+            myChart = new Chart(ctx, {
+                data: {
+                    labels: filtered.map(d => d[keys[0]]),
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: keys[1],
+                            data: filtered.map(d => d[keys[1]]),
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)' // Softer Blue
+                        },
+
+                        {
+                            type: 'line',
+                            label: keys[2],
+                            data: filtered.map(d => d[keys[2]]),
+                            borderColor: 'red',
+                            borderWidth: 3,        // Thicker line
+                            pointRadius: 5,        // Visible points
+                            fill: false
+                        }
+                    ]
+                },
+                options: { responsive: true, scales: { y: { beginAtZero: true } } }
+            });
+        }
+    </script>
+</body>
+
+</html>
