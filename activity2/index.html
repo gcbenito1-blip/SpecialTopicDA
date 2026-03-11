@@ -1,1 +1,124 @@
+<!doctype html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Dashboard - Activity 2</title>
+</head>
+
+<body>
+    <style>
+        body {
+            font-family: sans-serif;
+            background: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: auto;
+        }
+
+        .widget {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .controls {
+            margin: auto;
+            max-width: 1200px;
+            margin-bottom: 40px;
+        }
+    </style>
+    <h1>Activity 2</h1>
+
+    <div class="controls">
+        <label for="">Select Bar Metric</label>
+        <select id="barMetricSelector" onchange="updateChart()">
+            <option value="revenue">Revenue</option>
+            <option value="units">Units Sold</option>
+        </select>
+
+        <label for="">Start</label>
+        <input type="date" id="startDate" value="2026-01-01" />
+        <label for="">End</label>
+        <input type="date" id="endDate" value="2026-01-31" />
+
+        <button onclick="updateChart()">Apply Filter</button>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="widget">
+            <canvas id="myChart"></canvas>
+        </div>
+    </div>
+
+    <script src="chart.js"></script>
+    <script>
+        const fullData = [
+            { date: '2026-01-05', revenue: 1200, units: 530 },
+            { date: '2026-01-12', revenue: 1900, units: 250 },
+            { date: '2026-01-18', revenue: 1500, units: 1100 },
+            { date: '2026-01-25', revenue: 2200, units: 1980 }
+        ];
+
+        const ctx = document.getElementById("myChart").getContext("2d");
+        let myChart = new Chart(ctx, {
+            data: {
+                labels: fullData.map((d) => d.date),
+                datasets: [
+                    {
+                        type: "bar",
+                        label: "Bar Metric",
+                        data: fullData.map((d) => d.revenue),
+                        backgroundColor: "skyblue",
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    },
+                    {
+                        type: "line",
+                        label: "Units Sold (Trend)",
+                        data: fullData.map((d) => d.units),
+                        borderColor: "red",
+                        fill: false,
+                    },
+                ],
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true },
+                },
+            },
+        });
+
+        function updateChart() {
+            const start = document.getElementById("startDate").value;
+            const end = document.getElementById("endDate").value;
+            const barMetric = document.getElementById("barMetricSelector").value;
+
+            const filtered = fullData.filter(
+                (item) => item.date >= start && item.date <= end,
+            );
+
+            myChart.data.labels = filtered.map((item) => item.date);
+            myChart.data.datasets[0].data = filtered.map((item) => item[barMetric]);
+            myChart.data.datasets[1].data = filtered.map((item) => item.units);
+            myChart.update();
+        }
+
+    </script>
+</body>
+
+</html>
