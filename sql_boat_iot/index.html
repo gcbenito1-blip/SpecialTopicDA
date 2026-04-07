@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MySQL to Chart.js with Loader_benito</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .container {
+            width: 80%;
+            margin: 50px auto;
+            text-align: center;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* The Chart is hidden by default */
+        #chartWrapper,
+        #chartWrapper2,
+        #chartWrapper3,
+        #chartWrapper4,
+        #chartWrapper5 {
+            display: none;
+        }
+
+        /* Spinner Styles */
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="charts-grid">
+        <!-- Chart 1: Mixed Bar + Line -->
+        <div class="container">
+            <h2>Mixed Chart (Bar + Line)</h2>
+            <div id="loader" class="loader"></div>
+            <p id="loadingText">Fetching data from database...</p>
+            <div id="chartWrapper">
+                <canvas id="myMixedChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Line Chart -->
+        <div class="container">
+            <h2>Line Chart</h2>
+            <div id="loader2" class="loader"></div>
+            <p id="loadingText2">Loading line chart...</p>
+            <div id="chartWrapper2">
+                <canvas id="lineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 3: Pie Chart -->
+        <div class="container">
+            <h2>Pie Chart</h2>
+            <div id="loader3" class="loader"></div>
+            <p id="loadingText3">Loading pie chart...</p>
+            <div id="chartWrapper3">
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 4: Doughnut Chart -->
+        <div class="container">
+            <h2>Doughnut Chart</h2>
+            <div id="loader4" class="loader"></div>
+            <p id="loadingText4">Loading doughnut chart...</p>
+            <div id="chartWrapper4">
+                <canvas id="doughnutChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 5: Radar Chart - spans full width -->
+        <div class="container" style="grid-column: span 2;">
+            <h2>Radar Chart</h2>
+            <div id="loader5" class="loader"></div>
+            <p id="loadingText5">Loading radar chart...</p>
+            <div id="chartWrapper5">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadChartData() {
+            const loader = document.getElementById('loader');
+            const loadingText = document.getElementById('loadingText');
+            const chartWrapper = document.getElementById('chartWrapper');
+
+            const loader2 = document.getElementById('loader2');
+            const loadingText2 = document.getElementById('loadingText2');
+            const chartWrapper2 = document.getElementById('chartWrapper2');
+
+            const loader3 = document.getElementById('loader3');
+            const loadingText3 = document.getElementById('loadingText3');
+            const chartWrapper3 = document.getElementById('chartWrapper3');
+
+            const loader4 = document.getElementById('loader4');
+            const loadingText4 = document.getElementById('loadingText4');
+            const chartWrapper4 = document.getElementById('chartWrapper4');
+
+            const loader5 = document.getElementById('loader5');
+            const loadingText5 = document.getElementById('loadingText5');
+            const chartWrapper5 = document.getElementById('chartWrapper5');
+
+            try {
+                const response = await fetch('apiData.php');
+                const data = await response.json();
+
+                // Chart 1: Mixed Bar + Line
+                const ctx = document.getElementById('myMixedChart').getContext('2d');
+                new Chart(ctx, {
+                    data: { labels: data.labels, datasets: data.datasets },
+                    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+                });
+                loader.style.display = 'none';
+                loadingText.style.display = 'none';
+                chartWrapper.style.display = 'block';
+
+                // Chart 2: Line Chart
+                const ctx2 = document.getElementById('lineChart').getContext('2d');
+                new Chart(ctx2, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Total Trips',
+                            data: data.datasets[1].data,
+                            borderColor: 'rgb(75, 192, 192)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+                });
+                loader2.style.display = 'none';
+                loadingText2.style.display = 'none';
+                chartWrapper2.style.display = 'block';
+
+                // Chart 3: Pie Chart
+                const ctx3 = document.getElementById('pieChart').getContext('2d');
+                new Chart(ctx3, {
+                    type: 'pie',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Distribution',
+                            data: data.datasets[1].data,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.7)',
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 206, 86, 0.7)',
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)',
+                                'rgba(255, 159, 64, 0.7)',
+                                'rgba(199, 199, 199, 0.7)',
+                                'rgba(83, 102, 255, 0.7)',
+                                'rgba(40, 159, 255, 0.7)',
+                                'rgba(210, 99, 132, 0.7)'
+                            ]
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+                loader3.style.display = 'none';
+                loadingText3.style.display = 'none';
+                chartWrapper3.style.display = 'block';
+
+                // Chart 4: Doughnut Chart
+                const ctx4 = document.getElementById('doughnutChart').getContext('2d');
+                new Chart(ctx4, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Distribution',
+                            data: data.datasets[1].data,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.7)',
+                                'rgba(54, 162, 235, 0.7)',
+                                'rgba(255, 206, 86, 0.7)',
+                                'rgba(75, 192, 192, 0.7)',
+                                'rgba(153, 102, 255, 0.7)',
+                                'rgba(255, 159, 64, 0.7)',
+                                'rgba(199, 199, 199, 0.7)',
+                                'rgba(83, 102, 255, 0.7)',
+                                'rgba(40, 159, 255, 0.7)',
+                                'rgba(210, 99, 132, 0.7)'
+                            ]
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+                loader4.style.display = 'none';
+                loadingText4.style.display = 'none';
+                chartWrapper4.style.display = 'block';
+
+                // Chart 5: Radar Chart
+                const ctx5 = document.getElementById('radarChart').getContext('2d');
+                new Chart(ctx5, {
+                    type: 'radar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Performance',
+                            data: data.datasets[1].data,
+                            backgroundColor: 'rgba(54, 162, 235, 0.3)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            pointBackgroundColor: 'rgb(54, 162, 235)'
+                        }]
+                    },
+                    options: { responsive: true, scales: { r: { beginAtZero: true } } }
+                });
+                loader5.style.display = 'none';
+                loadingText5.style.display = 'none';
+                chartWrapper5.style.display = 'block';
+
+            } catch (error) {
+                loadingText.innerText = "Error loading data.";
+                console.error("Error:", error);
+            }
+        }
+
+        loadChartData();
+    </script>
+
+</body>
+
+</html>
