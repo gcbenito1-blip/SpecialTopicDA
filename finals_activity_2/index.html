@@ -1,1 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boat Fleet Operational & Efficiency Reports</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .dashboard-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .dashboard-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .date-filter {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .date-filter label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .date-filter input[type="date"] {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .date-filter input[type="date"]:focus {
+            border-color: #575757;
+        }
+
+        .apply-btn {
+            padding: 10px 25px;
+            color: white;
+            background: #0a63e9;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .apply-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(7, 42, 197, 0.4);
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            min-height: 350px;
+            position: relative;
+        }
+
+        .chart-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-align: center;
+        }
+
+        /* Loader Styles */
+        .chart-loader {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #0a63e9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .chart-wrapper {
+            display: none;
+            height: 280px;
+        }
+
+        .chart-wrapper.active {
+            display: block;
+        }
+
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .date-filter {
+                flex-direction: column;
+            }
+
+            .chart-card {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard-header">
+        <h1>Operational & Efficiency Reports</h1>
+
+        <div class="date-filter">
+            <label for="startDate">Start Date:</label>
+            <input type="date" id="startDate" name="startDate">
+
+            <label for="endDate">End Date:</label>
+            <input type="date" id="endDate" name="endDate">
+
+            <button class="apply-btn" onclick="applyDateFilter()">Apply Filter</button>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <!-- Chart 1: Trips per Boat (Bar Chart) -->
+        <div class="chart-card">
+            <h3>Trips per Boat</h3>
+            <div id="loader1" class="chart-loader">
+                <div class="spinner"></div>
+                <p class="loading-text">Loading trips data...</p>
+            </div>
+            <div id="chartWrapper1" class="chart-wrapper">
+                <canvas id="tripsChart"></canvas>
+            </div>
+            <p id="error1" class="error-message" style="display:none;"></p>
+        </div>
+
+        <!-- Chart 2: Boat Availability Status (Pie Chart) -->
+        <div class="chart-card">
+            <h3>Boat Availability Status</h3>
+            <div id="loader2" class="chart-loader">
+                <div class="spinner"></div>
+                <p class="loading-text">Loading availability data...</p>
+            </div>
+            <div id="chartWrapper2" class="chart-wrapper">
+                <canvas id="availabilityChart"></canvas>
+            </div>
+            <p id="error2" class="error-message" style="display:none;"></p>
+        </div>
+
+        <!-- Chart 3: Boat Distribution by Size (Doughnut Chart) -->
+        <div class="chart-card">
+            <h3>Boat Distribution by Size</h3>
+            <div id="loader3" class="chart-loader">
+                <div class="spinner"></div>
+                <p class="loading-text">Loading size distribution...</p>
+            </div>
+            <div id="chartWrapper3" class="chart-wrapper">
+                <canvas id="sizeChart"></canvas>
+            </div>
+            <p id="error3" class="error-message" style="display:none;"></p>
+        </div>
+
+        <!-- Chart 4: Average Trip Duration (Linear Chart) -->
+        <div class="chart-card">
+            <h3>Average Trip Duration</h3>
+            <div id="loader4" class="chart-loader">
+                <div class="spinner"></div>
+                <p class="loading-text">Loading duration data...</p>
+            </div>
+            <div id="chartWrapper4" class="chart-wrapper">
+                <canvas id="durationChart"></canvas>
+            </div>
+            <p id="error4" class="error-message" style="display:none;"></p>
+        </div>
+    </div>
+
+    <script>
+        // Store chart instances for updating
+        let chartInstances = {};
+
+        // Get date filter values
+        function getDateParams() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            let params = '';
+            if (startDate) params += 'startDate=' + startDate;
+            if (endDate) {
+                if (params) params += '&';
+                params += 'endDate=' + endDate;
+            }
+            return params ? '?' + params : '';
+        }
+
+        // Load all chart data
+        async function loadAllCharts() {
+            await Promise.all([
+                loadChart('trips', 'report=trips', 'chartWrapper1', 'loader1', 'error1', 'tripsChart', 'bar'),
+                loadChart('availability', 'report=availability', 'chartWrapper2', 'loader2', 'error2', 'availabilityChart', 'pie'),
+                loadChart('size', 'report=size', 'chartWrapper3', 'loader3', 'error3', 'sizeChart', 'doughnut'),
+                loadChart('duration', 'report=duration', 'chartWrapper4', 'loader4', 'error4', 'durationChart', 'line')
+            ]);
+        }
+
+        // Load individual chart
+        async function loadChart(report, params, wrapperId, loaderId, errorId, canvasId, chartType) {
+            const loader = document.getElementById(loaderId);
+            const wrapper = document.getElementById(wrapperId);
+            const errorEl = document.getElementById(errorId);
+            const dateParams = getDateParams();
+            const apiUrl = 'apiData.php?' + params + (dateParams ? '&' + dateParams.replace('?', '') : '');
+
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Destroy existing chart if exists
+                if (chartInstances[canvasId]) {
+                    chartInstances[canvasId].destroy();
+                }
+
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                const config = createChartConfig(chartType, data);
+
+                chartInstances[canvasId] = new Chart(ctx, config);
+
+                // Hide loader, show chart
+                loader.style.display = 'none';
+                wrapper.classList.add('active');
+
+            } catch (error) {
+                loader.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = 'Error: ' + error.message;
+                console.error('Chart loading error:', error);
+            }
+        }
+
+        // Create chart configuration
+        function createChartConfig(type, data) {
+            const baseConfig = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            };
+
+            if (type === 'bar') {
+                return {
+                    ...baseConfig,
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        ...baseConfig,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Trips'
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+
+            if (type === 'pie') {
+                return {
+                    ...baseConfig,
+                    type: 'pie',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    }
+                };
+            }
+
+            if (type === 'doughnut') {
+                return {
+                    ...baseConfig,
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    }
+                };
+            }
+
+            if (type === 'line') {
+                return {
+                    ...baseConfig,
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        ...baseConfig,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Duration (hours)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+        }
+
+        // Apply date filter
+        function applyDateFilter() {
+            loadAllCharts();
+        }
+
+        // Set default date range 
+        async function setDefaultDates() {
+            const endDate = new Date();
+
+            // Fetch earliest date from database
+            try {
+                const response = await fetch('apiData.php?report=minDate');
+                const data = await response.json();
+
+                if (data.minDate) {
+                    document.getElementById('startDate').value = data.minDate;
+                    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+                } else {
+                    // Fallback if no data
+                    const startDate = new Date();
+                    startDate.setDate(startDate.getDate() - 30);
+                    document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+                    document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+                }
+            } catch (error) {
+                console.error('Error fetching min date:', error);
+                // Fallback to last 30 days
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - 30);
+                document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+                document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async function () {
+            await setDefaultDates();
+            loadAllCharts();
+        });
+    </script>
+
+</body>
+
+</html>
