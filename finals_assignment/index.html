@@ -1,1 +1,1154 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boat Fleet Operational Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-header {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .dashboard-header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .dashboard-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .filter-section label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .filter-section input[type="date"] {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .filter-section input[type="date"]:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .filter-section button {
+            padding: 10px 25px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        .filter-section button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: transform 0.3s, box-shadow 0.3s;
+            position: relative;
+            min-height: 320px;
+        }
+
+        .chart-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .chart-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 250px;
+        }
+
+        .chart-card canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 15px;
+            z-index: 10;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .section-header {
+            grid-column: 1 / -1;
+            color: #333;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 30px 0 20px 0;
+            padding: 10px 0;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        .section-title:first-child {
+            margin-top: 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 95%;
+            max-width: 1100px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .modal-header h2 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .close-btn {
+            color: #aaa;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .modal-chart-wrapper {
+            height: 500px;
+            position: relative;
+        }
+
+        @media (max-width: 1024px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+
+            .modal-chart-wrapper {
+                height: 350px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .chart-card {
+                min-height: 280px;
+            }
+
+            .chart-wrapper {
+                height: 220px;
+            }
+
+            .dashboard-header h1 {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-header">
+        <h1>Boat Fleet Operational Dashboard</h1>
+        <p>Real-time Analytics & Performance Insights</p>
+    </div>
+    <div class="filter-section">
+        <label for="startDate">Start Date:</label>
+        <input type="date" id="startDate" name="startDate">
+        <label for="endDate">End Date:</label>
+        <input type="date" id="endDate" name="endDate">
+        <button onclick="applyFilter()">Apply Filter</button>
+        <button onclick="resetFilter()" style="background: #666;">Reset</button>
+    </div>
+
+    <div class="charts-container">
+        <!-- SECTION 1: Revenue & Passenger Insights -->
+        <div class="section-header">Revenue & Passenger Insights</div>
+
+        <!-- Chart 1: Total Monthly Revenue -->
+        <div class="chart-card" onclick="openModal('monthlyRevenue')">
+            <div class="loading-overlay" id="loading-monthlyRevenue">
+                <div class="spinner"></div>
+            </div>
+            <h3>Total Monthly Revenue</h3>
+            <div class="chart-wrapper">
+                <canvas id="monthlyRevenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Passenger Volume Trends -->
+        <div class="chart-card" onclick="openModal('passengerTrends')">
+            <div class="loading-overlay" id="loading-passengerTrends">
+                <div class="spinner"></div>
+            </div>
+            <h3>Passenger Volume Trends</h3>
+            <div class="chart-wrapper">
+                <canvas id="passengerTrendsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 3: Revenue vs. Boat Size -->
+        <div class="chart-card" onclick="openModal('revenueByBoatSize')">
+            <div class="loading-overlay" id="loading-revenueByBoatSize">
+                <div class="spinner"></div>
+            </div>
+            <h3>Revenue vs. Boat Size</h3>
+            <div class="chart-wrapper">
+                <canvas id="revenueByBoatSizeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 4: Paid vs. Unpaid Trips -->
+        <div class="chart-card" onclick="openModal('paidUnpaid')">
+            <div class="loading-overlay" id="loading-paidUnpaid">
+                <div class="spinner"></div>
+            </div>
+            <h3>Paid vs. Unpaid Trips</h3>
+            <div class="chart-wrapper">
+                <canvas id="paidUnpaidChart"></canvas>
+            </div>
+        </div>
+
+        <!-- SECTION 2: Driver & Staff Performance -->
+        <div class="section-header">Driver & Staff Performance</div>
+
+        <!-- Chart 5: Top Drivers by Trip Count -->
+        <div class="chart-card" onclick="openModal('topDrivers')">
+            <div class="loading-overlay" id="loading-topDrivers">
+                <div class="spinner"></div>
+            </div>
+            <h3>Top Drivers by Trip Count</h3>
+            <div class="chart-wrapper">
+                <canvas id="topDriversChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 6: Driver Workload vs. Boat Capacity -->
+        <div class="chart-card" onclick="openModal('driverWorkload')">
+            <div class="loading-overlay" id="loading-driverWorkload">
+                <div class="spinner"></div>
+            </div>
+            <h3>Driver Workload vs. Capacity</h3>
+            <div class="chart-wrapper">
+                <canvas id="driverWorkloadChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 7: Cancelled Trips by Driver -->
+        <div class="chart-card" onclick="openModal('cancelledByDriver')">
+            <div class="loading-overlay" id="loading-cancelledByDriver">
+                <div class="spinner"></div>
+            </div>
+            <h3>Cancelled Trips by Driver</h3>
+            <div class="chart-wrapper">
+                <canvas id="cancelledByDriverChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 8: Top Volume Drivers -->
+        <div class="chart-card" onclick="openModal('topVolumeDrivers')">
+            <div class="loading-overlay" id="loading-topVolumeDrivers">
+                <div class="spinner"></div>
+            </div>
+            <h3>Top 10 High-Volume Drivers</h3>
+            <div class="chart-wrapper">
+                <canvas id="topVolumeDriversChart"></canvas>
+            </div>
+        </div>
+
+        <!-- SECTION 3: Safety & Compliance Monitoring -->
+        <div class="section-header">Safety & Compliance Monitoring</div>
+
+        <!-- Chart 9: Safety Compliance Rate -->
+        <div class="chart-card" onclick="openModal('safetyCompliance')">
+            <div class="loading-overlay" id="loading-safetyCompliance">
+                <div class="spinner"></div>
+            </div>
+            <h3>Safety Compliance Rate</h3>
+            <div class="chart-wrapper">
+                <canvas id="safetyComplianceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 10: Inspections by Personnel -->
+        <div class="chart-card" onclick="openModal('inspectionsByPersonnel')">
+            <div class="loading-overlay" id="loading-inspectionsByPersonnel">
+                <div class="spinner"></div>
+            </div>
+            <h3>Inspections by Personnel</h3>
+            <div class="chart-wrapper">
+                <canvas id="inspectionsByPersonnelChart"></canvas>
+            </div>
+        </div>
+
+        <!-- SECTION 4: IoT & Real-Time Tracking -->
+        <div class="section-header">IoT & Real-Time Tracking</div>
+
+        <!-- Chart 11: Average Speed per Boat -->
+        <div class="chart-card" onclick="openModal('avgSpeedPerBoat')">
+            <div class="loading-overlay" id="loading-avgSpeedPerBoat">
+                <div class="spinner"></div>
+            </div>
+            <h3>Average Speed per Boat</h3>
+            <div class="chart-wrapper">
+                <canvas id="avgSpeedPerBoatChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 12: Heartbeat Health -->
+        <div class="chart-card" onclick="openModal('heartbeatHealth')">
+            <div class="loading-overlay" id="loading-heartbeatHealth">
+                <div class="spinner"></div>
+            </div>
+            <h3>Device Heartbeat Health</h3>
+            <div class="chart-wrapper">
+                <canvas id="heartbeatHealthChart"></canvas>
+            </div>
+        </div>
+
+        <!-- SECTION 5: Personnel & Accountability -->
+        <div class="section-header">Personnel & Accountability</div>
+
+        <!-- Chart 13: Staff Activity Breakdown -->
+        <div class="chart-card" onclick="openModal('staffActivity')">
+            <div class="loading-overlay" id="loading-staffActivity">
+                <div class="spinner"></div>
+            </div>
+            <h3>Staff Activity Breakdown</h3>
+            <div class="chart-wrapper">
+                <canvas id="staffActivityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 14: Driver-Boat Assignment -->
+        <div class="chart-card" onclick="openModal('driverBoatAssignment')">
+            <div class="loading-overlay" id="loading-driverBoatAssignment">
+                <div class="spinner"></div>
+            </div>
+            <h3>Driver-Boat Assignment</h3>
+            <div class="chart-wrapper">
+                <canvas id="driverBoatAssignmentChart"></canvas>
+            </div>
+        </div>
+
+        <!-- SECTION 6: Financial & Capacity Utilization -->
+        <div class="section-header">Financial & Capacity Utilization</div>
+
+        <!-- Chart 15: Revenue by Tour Type -->
+        <div class="chart-card" onclick="openModal('revenueByTourType')">
+            <div class="loading-overlay" id="loading-revenueByTourType">
+                <div class="spinner"></div>
+            </div>
+            <h3>Revenue by Tour Type</h3>
+            <div class="chart-wrapper">
+                <canvas id="revenueByTourTypeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 16: Boat Capacity vs. Actual -->
+        <div class="chart-card" onclick="openModal('boatCapacityUtilization')">
+            <div class="loading-overlay" id="loading-boatCapacityUtilization">
+                <div class="spinner"></div>
+            </div>
+            <h3>Boat Capacity vs. Passengers</h3>
+            <div class="chart-wrapper">
+                <canvas id="boatCapacityUtilizationChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 17: Payment Completion Rate -->
+        <div class="chart-card" onclick="openModal('paymentCompletion')">
+            <div class="loading-overlay" id="loading-paymentCompletion">
+                <div class="spinner"></div>
+            </div>
+            <h3>Payment Completion Rate</h3>
+            <div class="chart-wrapper">
+                <canvas id="paymentCompletionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- SECTION 7: Geographical & Speed Analysis -->
+        <div class="section-header">Geographical & Speed Analysis</div>
+
+        <!-- Chart 18: Average Speed by Boat Size -->
+        <div class="chart-card" onclick="openModal('avgSpeedByBoatSize')">
+            <div class="loading-overlay" id="loading-avgSpeedByBoatSize">
+                <div class="spinner"></div>
+            </div>
+            <h3>Avg Speed by Boat Size</h3>
+            <div class="chart-wrapper">
+                <canvas id="avgSpeedByBoatSizeChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 19: Peak Activity Hours -->
+        <div class="chart-card" onclick="openModal('peakActivityHours')">
+            <div class="loading-overlay" id="loading-peakActivityHours">
+                <div class="spinner"></div>
+            </div>
+            <h3>Peak Activity Hours</h3>
+            <div class="chart-wrapper">
+                <canvas id="peakActivityHoursChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for enlarged chart -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Chart Title</h2>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-chart-wrapper">
+                <canvas id="modalChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Chart instances storage
+        const charts = {};
+        let modalChart = null;
+        let currentReport = '';
+
+        // Report configuration for titles and settings
+        const reportConfig = {
+            monthlyRevenue: { title: 'Total Monthly Revenue', type: 'line', yLabel: 'Revenue ($)' },
+            passengerTrends: { title: 'Passenger Volume Trends', type: 'line', yLabel: 'Passengers' },
+            revenueByBoatSize: { title: 'Revenue vs. Boat Size', type: 'bar', yLabel: 'Revenue ($)' },
+            paidUnpaid: { title: 'Paid vs. Unpaid Trips', type: 'doughnut', yLabel: 'Trips' },
+            topDrivers: { title: 'Top Drivers by Trip Count', type: 'bar', yLabel: 'Trips' },
+            driverWorkload: { title: 'Driver Workload vs. Boat Capacity', type: 'mixed', yLabel: 'Count' },
+            cancelledByDriver: { title: 'Cancelled Trips by Driver', type: 'bar', yLabel: 'Cancellations' },
+            topVolumeDrivers: { title: 'Top 10 High-Volume Drivers', type: 'bar', yLabel: 'Passengers' },
+            safetyCompliance: { title: 'Safety Compliance Rate', type: 'bar', yLabel: 'Percentage (%)' },
+            inspectionsByPersonnel: { title: 'Inspections by Personnel', type: 'bar', yLabel: 'Inspections' },
+            avgSpeedPerBoat: { title: 'Average Speed per Boat', type: 'bar', yLabel: 'Speed (knots)' },
+            heartbeatHealth: { title: 'Device Heartbeat Health', type: 'bar', yLabel: 'Status' },
+            staffActivity: { title: 'Staff Activity Breakdown', type: 'bar', yLabel: 'Activities' },
+            driverBoatAssignment: { title: 'Driver-Boat Assignment Consistency', type: 'bar', yLabel: 'Trips' },
+            revenueByTourType: { title: 'Revenue by Tour Type', type: 'bar', yLabel: 'Revenue' },
+            boatCapacityUtilization: { title: 'Boat Capacity vs. Passengers', type: 'mixed', yLabel: 'Count' },
+            paymentCompletion: { title: 'Payment Completion Rate', type: 'pie', yLabel: 'Status' },
+            avgSpeedByBoatSize: { title: 'Average Speed by Boat Size', type: 'bar', yLabel: 'Speed (knots)' },
+            peakActivityHours: { title: 'Peak Activity Hours', type: 'line', yLabel: 'Trips' }
+        };
+
+        // Get date filter values
+        function getDateParams() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            let params = '';
+            if (startDate) params += 'startDate=' + startDate + '&';
+            if (endDate) params += 'endDate=' + endDate + '&';
+            return params;
+        }
+
+        // Map frontend camelCase report names to API snake_case names
+        const reportNameMap = {
+            monthlyRevenue: 'monthly_revenue',
+            passengerTrends: 'passenger_trends',
+            revenueByBoatSize: 'revenue_by_size',
+            paidUnpaid: 'paid_unpaid',
+            topDrivers: 'top_drivers',
+            driverWorkload: 'driver_workload_capacity',
+            cancelledByDriver: 'cancelled_by_driver',
+            topVolumeDrivers: 'top10_drivers',
+            safetyCompliance: 'safety_compliance',
+            inspectionsByPersonnel: 'inspections_by_personnel',
+            avgSpeedPerBoat: 'avg_speed_per_boat',
+            heartbeatHealth: 'device_heartbeat',
+            staffActivity: 'staff_activity',
+            driverBoatAssignment: 'driver_boat_assignment',
+            revenueByTourType: 'revenue_by_tour_type',
+            boatCapacityUtilization: 'capacity_utilization',
+            paymentCompletion: 'payment_completion_rate',
+            avgSpeedByBoatSize: 'avg_speed_by_boat_size',
+            peakActivityHours: 'peak_activity_hours'
+        };
+
+        // Convert camelCase to snake_case for API
+        function toSnakeCase(name) {
+            return reportNameMap[name] || name.replace(/([A-Z])/g, '_$1').toLowerCase();
+        }
+
+        // Fetch data from API
+        async function fetchData(report) {
+            const params = getDateParams();
+            const apiReport = toSnakeCase(report);
+            try {
+                const response = await fetch('apiData.php?report=' + apiReport + (params ? '&' + params : ''));
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching ' + report + ':', error);
+                return { labels: [], datasets: [] };
+            }
+        }
+
+        // Hide loading spinner
+        function hideLoading(report) {
+            const el = document.getElementById('loading-' + report);
+            if (el) el.classList.add('hidden');
+        }
+
+        // Apply date filter
+        function applyFilter() {
+            loadAllCharts();
+        }
+
+        // Reset filter
+        function resetFilter() {
+            loadDefaultDates();
+            loadAllCharts();
+        }
+
+        // Load all charts
+        async function loadAllCharts() {
+            await Promise.all([
+                loadMonthlyRevenue(),
+                loadPassengerTrends(),
+                loadRevenueByBoatSize(),
+                loadPaidUnpaid(),
+                loadTopDrivers(),
+                loadDriverWorkload(),
+                loadCancelledByDriver(),
+                loadTopVolumeDrivers(),
+                loadSafetyCompliance(),
+                loadInspectionsByPersonnel(),
+                loadAvgSpeedPerBoat(),
+                loadHeartbeatHealth(),
+                loadStaffActivity(),
+                loadDriverBoatAssignment(),
+                loadRevenueByTourType(),
+                loadBoatCapacityUtilization(),
+                loadPaymentCompletion(),
+                loadAvgSpeedByBoatSize(),
+                loadPeakActivityHours()
+            ]);
+        }
+
+        // Common chart options
+        function getCommonOptions(yLabel, beginAtZero = true) {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top' } },
+                scales: beginAtZero ? { y: { beginAtZero: true, ticks: { callback: v => v.toLocaleString() } } } : {}
+            };
+        }
+
+        // ============================================
+        // 1. REVENUE & PASSENGER INSIGHTS
+        // ============================================
+
+        async function loadMonthlyRevenue() {
+            try {
+                const data = await fetchData('monthlyRevenue');
+                if (charts.monthlyRevenue) charts.monthlyRevenue.destroy();
+                const ctx = document.getElementById('monthlyRevenueChart').getContext('2d');
+                charts.monthlyRevenue = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: [{
+                            label: 'Monthly Revenue',
+                            data: data.datasets?.[0]?.data || [],
+                            borderColor: '#4CAF50',
+                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                            borderWidth: 3, fill: true, tension: 0.4,
+                            pointBackgroundColor: '#4CAF50', pointBorderColor: '#fff', pointRadius: 4
+                        }]
+                    },
+                    options: getCommonOptions('Revenue')
+                });
+                hideLoading('monthlyRevenue');
+            } catch (e) { console.error(e); hideLoading('monthlyRevenue'); }
+        }
+
+        async function loadPassengerTrends() {
+            try {
+                const data = await fetchData('passengerTrends');
+                if (charts.passengerTrends) charts.passengerTrends.destroy();
+                const ctx = document.getElementById('passengerTrendsChart').getContext('2d');
+                charts.passengerTrends = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: [{
+                            label: 'Passengers',
+                            data: data.datasets?.[0]?.data || [],
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                            borderWidth: 3, fill: true, tension: 0.4,
+                            pointBackgroundColor: '#2196F3', pointBorderColor: '#fff', pointRadius: 4
+                        }]
+                    },
+                    options: getCommonOptions('Passengers')
+                });
+                hideLoading('passengerTrends');
+            } catch (e) { console.error(e); hideLoading('passengerTrends'); }
+        }
+
+        async function loadRevenueByBoatSize() {
+            try {
+                const data = await fetchData('revenueByBoatSize');
+                if (charts.revenueByBoatSize) charts.revenueByBoatSize.destroy();
+                const ctx = document.getElementById('revenueByBoatSizeChart').getContext('2d');
+                charts.revenueByBoatSize = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: data.datasets || []
+                    },
+                    options: getCommonOptions('Revenue')
+                });
+                hideLoading('revenueByBoatSize');
+            } catch (e) { console.error(e); hideLoading('revenueByBoatSize'); }
+        }
+
+        async function loadPaidUnpaid() {
+            try {
+                const data = await fetchData('paidUnpaid');
+                if (charts.paidUnpaid) charts.paidUnpaid.destroy();
+                const ctx = document.getElementById('paidUnpaidChart').getContext('2d');
+                charts.paidUnpaid = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: data.datasets || []
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+                });
+                hideLoading('paidUnpaid');
+            } catch (e) { console.error(e); hideLoading('paidUnpaid'); }
+        }
+
+        // ============================================
+        // 2. DRIVER & STAFF PERFORMANCE
+        // ============================================
+
+        async function loadTopDrivers() {
+            try {
+                const data = await fetchData('topDrivers');
+                if (charts.topDrivers) charts.topDrivers.destroy();
+                const ctx = document.getElementById('topDriversChart').getContext('2d');
+                charts.topDrivers = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: getCommonOptions('Trips')
+                });
+                hideLoading('topDrivers');
+            } catch (e) { console.error(e); hideLoading('topDrivers'); }
+        }
+
+        async function loadDriverWorkload() {
+            try {
+                const data = await fetchData('driverWorkload');
+                if (charts.driverWorkload) charts.driverWorkload.destroy();
+                const ctx = document.getElementById('driverWorkloadChart').getContext('2d');
+                charts.driverWorkload = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: (data.datasets || []).map((ds, i) => ({
+                            ...ds,
+                            type: ds.type === 'line' ? 'line' : 'bar',
+                            yAxisID: ds.yAxisID || 'y'
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: true, position: 'top' } },
+                        scales: {
+                            y: { beginAtZero: true, position: 'left' },
+                            y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+                hideLoading('driverWorkload');
+            } catch (e) { console.error(e); hideLoading('driverWorkload'); }
+        }
+
+        async function loadCancelledByDriver() {
+            try {
+                const data = await fetchData('cancelledByDriver');
+                if (charts.cancelledByDriver) charts.cancelledByDriver.destroy();
+                const ctx = document.getElementById('cancelledByDriverChart').getContext('2d');
+                charts.cancelledByDriver = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: getCommonOptions('Cancellations')
+                });
+                hideLoading('cancelledByDriver');
+            } catch (e) { console.error(e); hideLoading('cancelledByDriver'); }
+        }
+
+        async function loadTopVolumeDrivers() {
+            try {
+                const data = await fetchData('topVolumeDrivers');
+                if (charts.topVolumeDrivers) charts.topVolumeDrivers.destroy();
+                const ctx = document.getElementById('topVolumeDriversChart').getContext('2d');
+                charts.topVolumeDrivers = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'top' } } }
+                });
+                hideLoading('topVolumeDrivers');
+            } catch (e) { console.error(e); hideLoading('topVolumeDrivers'); }
+        }
+
+        // ============================================
+        // 3. SAFETY & COMPLIANCE MONITORING
+        // ============================================
+
+        async function loadSafetyCompliance() {
+            try {
+                const data = await fetchData('safetyCompliance');
+                if (charts.safetyCompliance) charts.safetyCompliance.destroy();
+                const ctx = document.getElementById('safetyComplianceChart').getContext('2d');
+                charts.safetyCompliance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: [{
+                            ...(data.datasets?.[0] || {}),
+                            data: data.datasets?.[0]?.data || []
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: v => v.raw + '%' } } },
+                        scales: { y: { beginAtZero: true, max: 100 } }
+                    }
+                });
+                hideLoading('safetyCompliance');
+            } catch (e) { console.error(e); hideLoading('safetyCompliance'); }
+        }
+
+        async function loadInspectionsByPersonnel() {
+            try {
+                const data = await fetchData('inspectionsByPersonnel');
+                if (charts.inspectionsByPersonnel) charts.inspectionsByPersonnel.destroy();
+                const ctx = document.getElementById('inspectionsByPersonnelChart').getContext('2d');
+                charts.inspectionsByPersonnel = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: getCommonOptions('Inspections')
+                });
+                hideLoading('inspectionsByPersonnel');
+            } catch (e) { console.error(e); hideLoading('inspectionsByPersonnel'); }
+        }
+
+        // ============================================
+        // 4. IOT & REAL-TIME TRACKING
+        // ============================================
+
+        async function loadAvgSpeedPerBoat() {
+            try {
+                const data = await fetchData('avgSpeedPerBoat');
+                if (charts.avgSpeedPerBoat) charts.avgSpeedPerBoat.destroy();
+                const ctx = document.getElementById('avgSpeedPerBoatChart').getContext('2d');
+                charts.avgSpeedPerBoat = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: getCommonOptions('Speed')
+                });
+                hideLoading('avgSpeedPerBoat');
+            } catch (e) { console.error(e); hideLoading('avgSpeedPerBoat'); }
+        }
+
+        async function loadHeartbeatHealth() {
+            try {
+                const data = await fetchData('heartbeatHealth');
+                if (charts.heartbeatHealth) charts.heartbeatHealth.destroy();
+                const ctx = document.getElementById('heartbeatHealthChart').getContext('2d');
+                charts.heartbeatHealth = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: [{
+                            label: 'Device Status',
+                            data: (data.datasets?.[0]?.data || []).map(v => v * 100),
+                            backgroundColor: (data.datasets?.[0]?.data || []).map(v =>
+                                v >= 1 ? 'rgba(75, 192, 192, 0.7)' : v >= 0.5 ? 'rgba(255, 206, 86, 0.7)' : 'rgba(255, 99, 132, 0.7)'
+                            )
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } }
+                    }
+                });
+                hideLoading('heartbeatHealth');
+            } catch (e) { console.error(e); hideLoading('heartbeatHealth'); }
+        }
+
+        // ============================================
+        // 5. PERSONNEL & ACCOUNTABILITY
+        // ============================================
+
+        async function loadStaffActivity() {
+            try {
+                const data = await fetchData('staffActivity');
+                if (charts.staffActivity) charts.staffActivity.destroy();
+                const ctx = document.getElementById('staffActivityChart').getContext('2d');
+                charts.staffActivity = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: (data.datasets || []).map((ds, i) => ({
+                            ...ds,
+                            data: ds.data || [],
+                            backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(75, 192, 192, 0.7)', 'rgba(255, 206, 86, 0.7)'][i],
+                            borderColor: ['rgba(54, 162, 235, 1)', 'rgba(75, 192, 192, 1)', 'rgba(255, 206, 86, 1)'][i]
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'top' } },
+                        scales: { y: { beginAtZero: true } }
+                    }
+                });
+                hideLoading('staffActivity');
+            } catch (e) { console.error(e); hideLoading('staffActivity'); }
+        }
+
+        async function loadDriverBoatAssignment() {
+            try {
+                const data = await fetchData('driverBoatAssignment');
+                if (charts.driverBoatAssignment) charts.driverBoatAssignment.destroy();
+                const ctx = document.getElementById('driverBoatAssignmentChart').getContext('2d');
+                charts.driverBoatAssignment = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: getCommonOptions('Trips')
+                });
+                hideLoading('driverBoatAssignment');
+            } catch (e) { console.error(e); hideLoading('driverBoatAssignment'); }
+        }
+
+        // ============================================
+        // 6. FINANCIAL & CAPACITY UTILIZATION
+        // ============================================
+
+        async function loadRevenueByTourType() {
+            try {
+                const data = await fetchData('revenueByTourType');
+                if (charts.revenueByTourType) charts.revenueByTourType.destroy();
+                const ctx = document.getElementById('revenueByTourTypeChart').getContext('2d');
+                charts.revenueByTourType = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { position: 'top' } } }
+                });
+                hideLoading('revenueByTourType');
+            } catch (e) { console.error(e); hideLoading('revenueByTourType'); }
+        }
+
+        async function loadBoatCapacityUtilization() {
+            try {
+                const data = await fetchData('boatCapacityUtilization');
+                if (charts.boatCapacityUtilization) charts.boatCapacityUtilization.destroy();
+                const ctx = document.getElementById('boatCapacityUtilizationChart').getContext('2d');
+                charts.boatCapacityUtilization = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: (data.datasets || []).map(ds => ({
+                            ...ds,
+                            type: ds.type === 'line' ? 'line' : 'bar',
+                            data: ds.data || [],
+                            yAxisID: 'y'
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: true, position: 'top' } },
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+                hideLoading('boatCapacityUtilization');
+            } catch (e) { console.error(e); hideLoading('boatCapacityUtilization'); }
+        }
+
+        async function loadPaymentCompletion() {
+            try {
+                const data = await fetchData('paymentCompletion');
+                if (charts.paymentCompletion) charts.paymentCompletion.destroy();
+                const ctx = document.getElementById('paymentCompletionChart').getContext('2d');
+                charts.paymentCompletion = new Chart(ctx, {
+                    type: 'pie',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+                });
+                hideLoading('paymentCompletion');
+            } catch (e) { console.error(e); hideLoading('paymentCompletion'); }
+        }
+
+        // ============================================
+        // 7. GEOGRAPHICAL & SPEED ANALYSIS
+        // ============================================
+
+        async function loadAvgSpeedByBoatSize() {
+            try {
+                const data = await fetchData('avgSpeedByBoatSize');
+                if (charts.avgSpeedByBoatSize) charts.avgSpeedByBoatSize.destroy();
+                const ctx = document.getElementById('avgSpeedByBoatSizeChart').getContext('2d');
+                charts.avgSpeedByBoatSize = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: data.labels || [], datasets: data.datasets || [] },
+                    options: getCommonOptions('Speed')
+                });
+                hideLoading('avgSpeedByBoatSize');
+            } catch (e) { console.error(e); hideLoading('avgSpeedByBoatSize'); }
+        }
+
+        async function loadPeakActivityHours() {
+            try {
+                const data = await fetchData('peakActivityHours');
+                if (charts.peakActivityHours) charts.peakActivityHours.destroy();
+                const ctx = document.getElementById('peakActivityHoursChart').getContext('2d');
+                charts.peakActivityHours = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels || [],
+                        datasets: [{
+                            label: 'Trip Count',
+                            data: data.datasets?.[0]?.data || [],
+                            borderColor: '#2196F3',
+                            backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                            borderWidth: 3, fill: true, tension: 0.4,
+                            pointBackgroundColor: '#2196F3', pointBorderColor: '#fff', pointRadius: 4
+                        }]
+                    },
+                    options: getCommonOptions('Trips')
+                });
+                hideLoading('peakActivityHours');
+            } catch (e) { console.error(e); hideLoading('peakActivityHours'); }
+        }
+
+        // ============================================
+        // MODAL FUNCTIONS
+        // ============================================
+
+        function openModal(report) {
+            currentReport = report;
+            const config = reportConfig[report];
+            document.getElementById('modalTitle').textContent = config?.title || report;
+            document.getElementById('chartModal').style.display = 'block';
+
+            // Clone chart to modal
+            if (modalChart) modalChart.destroy();
+            const sourceCanvas = document.getElementById(report + 'Chart');
+            if (!sourceCanvas) return;
+
+            const ctx = document.getElementById('modalChart').getContext('2d');
+            const sourceChart = charts[report];
+            if (sourceChart) {
+                modalChart = new Chart(ctx, {
+                    type: sourceChart.config.type,
+                    data: sourceChart.config.data,
+                    options: {
+                        ...sourceChart.config.options,
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { ...sourceChart.config.options?.plugins, legend: { display: true, position: 'top' } }
+                    }
+                });
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('chartModal').style.display = 'none';
+            if (modalChart) {
+                modalChart.destroy();
+                modalChart = null;
+            }
+        }
+
+        // Close modal on outside click
+        document.getElementById('chartModal').addEventListener('click', function (e) {
+            if (e.target.id === 'chartModal') closeModal();
+        });
+
+        // Close modal on escape
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // Initialize on load
+        window.addEventListener('load', async function () {
+            await loadDefaultDates();
+            loadAllCharts();
+        });
+
+        // Load default date range from API
+        async function loadDefaultDates() {
+            try {
+                // Fetch min and max dates
+                const [minRes, maxRes] = await Promise.all([
+                    fetch('apiData.php?report=minDate'),
+                    fetch('apiData.php?report=maxDate')
+                ]);
+                const minData = await minRes.json();
+                const maxData = await maxRes.json();
+
+                if (minData.minDate) {
+                    document.getElementById('startDate').value = minData.minDate;
+                }
+                if (maxData.maxDate) {
+                    document.getElementById('endDate').value = maxData.maxDate;
+                }
+            } catch (e) {
+                console.error('Error loading default dates:', e);
+            }
+        }
+    </script>
+</body>
+
+</html>
